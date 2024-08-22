@@ -3,12 +3,13 @@
 -- Drop the stored procedure if it already exists
 DROP PROCEDURE IF EXISTS ComputeAverageScoreForUser;
 
--- Change the delimiter to $$
+-- Change the delimiter to handle the procedure block
 DELIMITER $$
 
--- Create the stored procedure
+-- Create the stored procedure ComputeAverageScoreForUser
 CREATE PROCEDURE ComputeAverageScoreForUser(IN user_id INT)
 BEGIN
+    -- Declare a variable to store the computed average score
     DECLARE avg_score FLOAT;
 
     -- Calculate the average score for the user
@@ -22,5 +23,7 @@ BEGIN
     WHERE id = user_id;
 END$$
 
--- Reset the delimiter to ;
+-- Reset the delimiter back to the default
 DELIMITER ;
+
+-- End of the script
