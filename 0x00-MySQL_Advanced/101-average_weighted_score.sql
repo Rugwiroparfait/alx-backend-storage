@@ -8,33 +8,25 @@ CREATE PROCEDURE ComputeAverageWeightedScoreForUsers()
 BEGIN
     DECLARE done INT DEFAULT 0;
     DECLARE user_id INT;
-    
-    -- Declare a cursor for the users
-    DECLARE user_cursor CURSOR FOR 
-    SELECT id FROM users;
-    
-    -- Declare a handler to set the done variable when the cursor is exhausted
+    DECLARE cur CURSOR FOR SELECT id FROM users;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
-    
-    -- Open the cursor
-    OPEN user_cursor;
-    
-    -- Loop through all users
+
+    -- Open cursor for iterating over each user
+    OPEN cur;
+
     read_loop: LOOP
-        -- Fetch the next user id
-        FETCH user_cursor INTO user_id;
-        
-        -- If no more rows, exit the loop
+        FETCH cur INTO user_id;
         IF done THEN
             LEAVE read_loop;
         END IF;
-        
-        -- Calculate and update the average weighted score for the current user
+
+        -- Calculate the total weighted score and total weight for the current user
         CALL ComputeAverageWeightedScoreForUser(user_id);
+        
     END LOOP;
-    
-    -- Close the cursor
-    CLOSE user_cursor;
+
+    CLOSE cur;
+
 END //
 
 DELIMITER ;
