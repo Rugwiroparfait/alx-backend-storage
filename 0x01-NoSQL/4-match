@@ -1,0 +1,2 @@
+// find in a collection school  with name Holberton school
+db.school.fing({name:"Holberton school"})
