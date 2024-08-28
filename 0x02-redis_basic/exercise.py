@@ -50,6 +50,29 @@ def call_history(method: Callable) -> Callable:
     return wrapper
 
 
+def replay(fn: Callable):
+    '''display the history of calls of a particular function.'''
+    r = redis.Redis()
+    func_name = fn.__qualname__
+    c = r.get(func_name)
+    try:
+        c = int(c.decode("utf-8"))
+    except Exception:
+        c = 0
+    print("{} was called {} times:".format(func_name, c))
+    inputs = r.lrange("{}:inputs".format(func_name), 0, -1)
+    outputs = r.lrange("{}:outputs".format(func_name), 0, -1)
+    for inp, outp in zip(inputs, outputs):
+        try:
+            inp = inp.decode("utf-8")
+        except Exception:
+            inp = ""
+        try:
+            outp = outp.decode("utf-8")
+        except Exception:
+            outp = ""
+        print("{}(*{}) -> {}".format(func_name, inp, outp))
+    
 def count_calls(method: Callable) -> Callable:
     """
     Decorator to count the number of times a method is called.
@@ -150,23 +173,6 @@ class Cache:
         """
         return self.get(key, fn=int)
     
-    def replay(method: Callable):
-        """
-        Displays the history of calls of a particular function.
-        
-        Args:
-            method (Callable): The function to replay the history for.
-        """
-        self = method.__self__
-        input_key = f"{method.__qualname__}:input"
-        output_key = f"{method.__qualname__}:output"
-        
-        inputs = self._redis.lrange(input_key, 0 -1)
-        outputs = self._redis.lrange(output_key, 0, -1)
-        
-        print(f"{method.__qualname__} was called {len(inputs)} times:")
-        for input_args, output in zip(inputs, outputs):
-            print(f"{method.__qualname__}(*{input_args.decode('utf-8')}) -> {output.decode('utf-8')}")
 
 
 if __name__ == "__main__":
