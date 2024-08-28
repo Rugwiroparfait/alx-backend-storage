@@ -22,7 +22,8 @@ def count_calls(method: Callable) -> Callable:
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         """
-        Wrapper function that increments the call count in Redis and calls the original method.
+        Wrapper function that increments the call
+        count in Redis and calls the original method.
 
         Args:
             self: The instance of the Cache class.
@@ -68,16 +69,20 @@ class Cache:
         self._redis.set(key, data)
         return key
 
-    def get(self, key: str, fn: Optional[Callable] = None) -> Union[str, bytes, int, float, None]:
+    def get(self, key: str, fn: Optional[Callable] = None) -> \
+            Union[str, bytes, int, float, None]:
         """
-        Retrieve data from Redis by key and optionally convert it using a callable.
+        Retrieve data from Redis by key and optionally
+        convert it using a callable.
 
         Args:
             key (str): The key to retrieve from Redis.
-            fn (Optional[Callable]): A callable to convert the data back to the desired format.
+            fn (Optional[Callable]): A callable to convert
+            the data back to the desired format.
 
         Returns:
-            Union[str, bytes, int, float, None]: The data retrieved from Redis, optionally transformed by fn.
+            Union[str, bytes, int, float, None]: The data
+            retrieved from Redis, optionally transformed by fn.
         """
         data = self._redis.get(key)
         if data is not None and fn is not None:
