@@ -1,12 +1,53 @@
 #!/usr/bin/env python3
 """
-Cache module with a count_calls decorator to track method calls.
+Cache module with a call_history decorator to track method call history.
 """
 
 import redis
 import uuid
 from typing import Union, Callable, Optional
 from functools import wraps
+
+
+def call_history(method: Callable) -> Callable:
+    """
+    Decorator to store the history of inputs and outputs for a particular function.
+
+    Args:
+        method (Callable): The method to be wrapped.
+
+    Returns:
+        Callable: The wrapped method.
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """
+        Wrapper function that stores the inputs and outputs in Redis.
+
+        Args:
+            self: The instance of the Cache class.
+            *args: Positional arguments to the method.
+            **kwargs: Keyword arguments to the method.
+
+        Returns:
+            The result of the original method.
+        """
+        # Define the keys for inputs and outputs
+        input_key = f"{method.__qualname__}:inputs"
+        output_key = f"{method.__qualname__}:outputs"
+
+        # Store the input arguments as a string in the inputs list
+        self._redis.rpush(input_key, str(args))
+
+        # Call the original method and get its result
+        result = method(self, *args, **kwargs)
+
+        # Store the result in the outputs list
+        self._redis.rpush(output_key, str(result))
+
+        return result
+
+    return wrapper
 
 
 def count_calls(method: Callable) -> Callable:
@@ -22,8 +63,7 @@ def count_calls(method: Callable) -> Callable:
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         """
-        Wrapper function that increments the call
-        count in Redis and calls the original method.
+        Wrapper function that increments the call count in Redis and calls the original method.
 
         Args:
             self: The instance of the Cache class.
@@ -54,6 +94,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @call_history
     @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
@@ -69,20 +110,16 @@ class Cache:
         self._redis.set(key, data)
         return key
 
-    def get(self, key: str, fn: Optional[Callable] = None) -> \
-            Union[str, bytes, int, float, None]:
+    def get(self, key: str, fn: Optional[Callable] = None) -> Union[str, bytes, int, float, None]:
         """
-        Retrieve data from Redis by key and optionally
-        convert it using a callable.
+        Retrieve data from Redis by key and optionally convert it using a callable.
 
         Args:
             key (str): The key to retrieve from Redis.
-            fn (Optional[Callable]): A callable to convert
-            the data back to the desired format.
+            fn (Optional[Callable]): A callable to convert the data back to the desired format.
 
         Returns:
-            Union[str, bytes, int, float, None]: The data
-            retrieved from Redis, optionally transformed by fn.
+            Union[str, bytes, int, float, None]: The data retrieved from Redis, optionally transformed by fn.
         """
         data = self._redis.get(key)
         if data is not None and fn is not None:
@@ -118,9 +155,15 @@ if __name__ == "__main__":
     # Example usage
     cache = Cache()
 
-    cache.store(b"first")
-    print(cache.get(cache.store.__qualname__))  # Output: b'1'
+    s1 = cache.store("first")
+    print(s1)
+    s2 = cache.store("secont")
+    print(s2)
+    s3 = cache.store("third")
+    print(s3)
 
-    cache.store(b"second")
-    cache.store(b"third")
-    print(cache.get(cache.store.__qualname__))  # Output: b'3'
+    inputs = cache._redis.lrange(f"{cache.store.__qualname__}:inputs", 0, -1)
+    outputs = cache._redis.lrange(f"{cache.store.__qualname__}:outputs", 0, -1)
+
+    print("inputs: {}".format(inputs))
+    print("outputs: {}".format(outputs))
