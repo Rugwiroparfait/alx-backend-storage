@@ -1,11 +1,45 @@
 #!/usr/bin/env python3
 """
-Cache module for interacting with Redis.
+Cache module with a count_calls decorator to track method calls.
 """
 
 import redis
 import uuid
 from typing import Union, Callable, Optional
+from functools import wraps
+
+
+def count_calls(method: Callable) -> Callable:
+    """
+    Decorator to count the number of times a method is called.
+
+    Args:
+        method (Callable): The method to be wrapped.
+
+    Returns:
+        Callable: The wrapped method.
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """
+        Wrapper function that increments the call count in Redis and calls the original method.
+
+        Args:
+            self: The instance of the Cache class.
+            *args: Positional arguments to the method.
+            **kwargs: Keyword arguments to the method.
+
+        Returns:
+            The result of the original method.
+        """
+        # Use the qualified name of the method as the key
+        key = method.__qualname__
+        # Increment the count for the method in Redis
+        self._redis.incr(key)
+        # Call the original method and return its result
+        return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Cache:
@@ -19,6 +53,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
         """
         Store data in Redis with a random key.
@@ -78,19 +113,9 @@ if __name__ == "__main__":
     # Example usage
     cache = Cache()
 
-    TEST_CASES = {
-        b"foo": None,
-        123: int,
-        "bar": lambda d: d.decode("utf-8")
-    }
+    cache.store(b"first")
+    print(cache.get(cache.store.__qualname__))  # Output: b'1'
 
-    for value, fn in TEST_CASES.items():
-        key = cache.store(value)
-        assert cache.get(key, fn=fn) == value
-
-    # Example usage of get_str and get_int
-    str_key = cache.store("hello")
-    int_key = cache.store(42)
-
-    assert cache.get_str(str_key) == "hello"
-    assert cache.get_int(int_key) == 42
+    cache.store(b"second")
+    cache.store(b"third")
+    print(cache.get(cache.store.__qualname__))  # Output: b'3'
